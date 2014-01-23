@@ -4,17 +4,13 @@ import java.util.List;
 
 import net.diogomarques.com.android.internal.widget.LockPatternView;
 import net.diogomarques.com.android.internal.widget.LockPatternView.Cell;
-import net.diogomarques.com.android.internal.widget.LockPatternView.DisplayMode;
 import android.app.Activity;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.util.Log;
-import android.view.Window;
 import android.view.WindowManager;
-import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 public class UnlockPatternActivity extends Activity {
 
@@ -23,6 +19,7 @@ public class UnlockPatternActivity extends Activity {
 	// TODO: this value (and computations that use it) should be independent
 	// from screen
 	protected static final int MOVEMENT_AGAINST_GRAIN_THRESHOLD_IN_GNEXUS = 0;
+	protected static final int TARGET_BOUNDAY_RADIUS = 60;
 
 	protected static final String TAG = UnlockPatternActivity.class
 			.getSimpleName();
@@ -69,45 +66,55 @@ public class UnlockPatternActivity extends Activity {
 		Vertical, Horizontal
 	}
 
-	private void handlePatternDetection(List<Cell> pattern, float x, float y) {
+	private void handlePatternDetection(List<Cell> pattern, float releaseX,
+			float releaseY) {
 		// do nothing if pattern only has one point
 		if (pattern.size() < 2)
 			return;
 		Cell lastCell = pattern.get(pattern.size() - 1);
+		float lastCellX = mLockPatternView.getCenterXForColumn(lastCell.column);
+		float lastCellY = mLockPatternView.getCenterYForRow(lastCell.row);
+
 		Cell cellBeforeLast = pattern.get(pattern.size() - 2);
-		Log.w(TAG,
-				"Last cell (row " + lastCell.row + " collumn "
-						+ lastCell.column + ") x,y: "
-						+ mLockPatternView.getCenterXForColumn(lastCell.column)
-						+ "," + mLockPatternView.getCenterYForRow(lastCell.row));
-		Log.w(TAG, "Release x,y: " + x + "," + y);
+		Log.w(TAG, "Last cell (row " + lastCell.row + " collumn "
+				+ lastCell.column + ") x,y: " + lastCellX + "," + lastCellY);
+		Log.w(TAG, "Release x,y: " + releaseX + "," + releaseY);
 
 		// Check if release is against natural movement
 		// TODO: other orientations
 
-		boolean releaseIsAgainstFlow = false;
 		// get orientations
 		LastStrokeOrientation orientation = LastStrokeOrientation.Horizontal;
 		if (lastCell.column == cellBeforeLast.column)
 			orientation = LastStrokeOrientation.Vertical;
-		// verify that if release was unnatural
+
+		// verify that if release was against the flow
+		// TODO: improve this using the angle between the stroke vector and the
+		// center to release vector
+		boolean releaseIsAgainstFlow = false;
 		if (orientation == LastStrokeOrientation.Horizontal) {
 			// get natural direction (1 LH to RH, -1 otherwise)
 			int direction = lastCell.column - cellBeforeLast.column;
-			double naturalReleaseTreshold = mLockPatternView.getCenterXForColumn(lastCell.column) - direction
+			double naturalReleaseTreshold = lastCellX - direction
 					* MOVEMENT_AGAINST_GRAIN_THRESHOLD_IN_GNEXUS;
-			releaseIsAgainstFlow = (direction * x) < (direction * naturalReleaseTreshold); 
+			releaseIsAgainstFlow = (direction * releaseX) < (direction * naturalReleaseTreshold);
 
 		} else {
 			// get natural direction (1 TOP to BOTTOM, -1 otherwise)
 			int direction = lastCell.row - cellBeforeLast.row;
-			double naturalReleaseTreshold = mLockPatternView.getCenterYForRow(lastCell.row) - direction
+			double naturalReleaseTreshold = lastCellY - direction
 					* MOVEMENT_AGAINST_GRAIN_THRESHOLD_IN_GNEXUS;
-			releaseIsAgainstFlow = (direction * y) < (direction * naturalReleaseTreshold);
+			releaseIsAgainstFlow = (direction * releaseY) < (direction * naturalReleaseTreshold);
 		}
 
+		// verify that if release was outside the radius
+		boolean releaseIsOutsideRadius = (Math.pow((releaseX - lastCellX), 2) + Math
+				.pow(releaseY - lastCellY, 2)) > Math.pow(
+				TARGET_BOUNDAY_RADIUS, 2);
+
 		String detectedPattern = PatternUtils.convertDrawPattern(pattern);
-		if (releaseIsAgainstFlow && detectedPattern.equals(getPattern()))
+		if (releaseIsAgainstFlow && releaseIsOutsideRadius
+				&& detectedPattern.equals(getPattern()))
 			handleUnlockSucess();
 		else
 			handleUnlockFailure();
@@ -116,12 +123,12 @@ public class UnlockPatternActivity extends Activity {
 	protected void handleUnlockSucess() {
 		mLockPatternView.clearPattern();
 		mTextViewBottom.setText("Unlocked!");
-		new CountDownTimer(2000,2000) {
-			
+		new CountDownTimer(2000, 2000) {
+
 			@Override
 			public void onTick(long millisUntilFinished) {
 			}
-			
+
 			@Override
 			public void onFinish() {
 				mTextViewBottom.setText("");
@@ -130,7 +137,7 @@ public class UnlockPatternActivity extends Activity {
 	}
 
 	protected void handleUnlockFailure() {
-		mTextViewBottom.setText("Failed!");		
+		mTextViewBottom.setText("Failed!");
 	}
 
 	protected String getPattern() {
