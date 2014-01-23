@@ -70,6 +70,9 @@ public class UnlockPatternActivity extends Activity {
 	}
 
 	private void handlePatternDetection(List<Cell> pattern, float x, float y) {
+		// do nothing if pattern only has one point
+		if (pattern.size() < 2)
+			return;
 		Cell lastCell = pattern.get(pattern.size() - 1);
 		Cell cellBeforeLast = pattern.get(pattern.size() - 2);
 		Log.w(TAG,
