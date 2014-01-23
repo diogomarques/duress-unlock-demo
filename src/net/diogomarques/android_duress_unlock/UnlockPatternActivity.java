@@ -8,9 +8,12 @@ import net.diogomarques.com.android.internal.widget.LockPatternView.DisplayMode;
 import android.app.Activity;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 public class UnlockPatternActivity extends Activity {
@@ -19,17 +22,19 @@ public class UnlockPatternActivity extends Activity {
 	protected int tryCount = 0;
 	// TODO: this value (and computations that use it) should be independent
 	// from screen
-	protected static final int MOVEMENT_AGAINST_GRAIN_THRESHOLD_IN_GNEXUS = 30;
+	protected static final int MOVEMENT_AGAINST_GRAIN_THRESHOLD_IN_GNEXUS = 0;
 
 	protected static final String TAG = UnlockPatternActivity.class
 			.getSimpleName();
 	LockPatternView mLockPatternView;
+	TextView mTextViewBottom;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setFullWindowNoRotationAndLock();
 		setContentView(R.layout.activity_unlock_pattern);
+		mTextViewBottom = (TextView) findViewById(R.id.textViewBottom);
 		mLockPatternView = (LockPatternView) findViewById(R.id.lockPatternView);
 		mLockPatternView
 				.setOnPatternListener(new LockPatternView.OnPatternListener() {
@@ -103,40 +108,31 @@ public class UnlockPatternActivity extends Activity {
 			handleUnlockSucess();
 		else
 			handleUnlockFailure();
-
 	}
 
 	protected void handleUnlockSucess() {
 		mLockPatternView.clearPattern();
-		Toast.makeText(this, "Unlocked!", Toast.LENGTH_SHORT).show();
-		setResult(Activity.RESULT_OK);
+		mTextViewBottom.setText("Unlocked!");
+		new CountDownTimer(2000,2000) {
+			
+			@Override
+			public void onTick(long millisUntilFinished) {
+			}
+			
+			@Override
+			public void onFinish() {
+				mTextViewBottom.setText("");
+			}
+		}.start();
 	}
 
 	protected void handleUnlockFailure() {
-		tryCount++;
-		if (tryCount >= MAX_TRIALS) {
-			handleUnlockFailureExceededTrials();
-		} else {
-			handleUnlockFailureAttemptsLeft();
-		}
-	}
-
-	protected void handleUnlockFailureAttemptsLeft() {
-		mLockPatternView.setDisplayMode(DisplayMode.Wrong);
-		Toast.makeText(this,
-				"Wrong code." + (MAX_TRIALS - tryCount) + " attempts left.",
-				Toast.LENGTH_SHORT).show();
-	}
-
-	protected void handleUnlockFailureExceededTrials() {
-		Toast.makeText(this,
-				"Wrong code. Failed all " + MAX_TRIALS + " attemps.",
-				Toast.LENGTH_SHORT).show();
+		mTextViewBottom.setText("Failed!");		
 	}
 
 	protected String getPattern() {
 		// TODO: get persisted pattern
-		return "1236";
+		return "12365";
 	}
 
 }
