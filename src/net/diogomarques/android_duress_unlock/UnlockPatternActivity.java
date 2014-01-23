@@ -17,6 +17,9 @@ public class UnlockPatternActivity extends Activity {
 
 	protected static final int MAX_TRIALS = 3;
 	protected int tryCount = 0;
+	// TODO: this value (and computations that use it) should be independent
+	// from screen
+	protected static final int MOVEMENT_AGAINST_GRAIN_THRESHOLD_IN_GNEXUS = 30;
 
 	protected static final String TAG = UnlockPatternActivity.class
 			.getSimpleName();
@@ -57,15 +60,46 @@ public class UnlockPatternActivity extends Activity {
 				WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 	}
 
+	enum LastStrokeOrientation {
+		Vertical, Horizontal
+	}
+
 	private void handlePatternDetection(List<Cell> pattern, float x, float y) {
 		Cell lastCell = pattern.get(pattern.size() - 1);
+		Cell cellBeforeLast = pattern.get(pattern.size() - 2);
 		Log.w(TAG,
-				"Last cell x,y: "
+				"Last cell (row " + lastCell.row + " collumn "
+						+ lastCell.column + ") x,y: "
 						+ mLockPatternView.getCenterXForColumn(lastCell.column)
 						+ "," + mLockPatternView.getCenterYForRow(lastCell.row));
 		Log.w(TAG, "Release x,y: " + x + "," + y);
+
+		// Check if release is against natural movement
+		// TODO: other orientations
+
+		boolean releaseIsAgainstFlow = false;
+		// get orientations
+		LastStrokeOrientation orientation = LastStrokeOrientation.Horizontal;
+		if (lastCell.column == cellBeforeLast.column)
+			orientation = LastStrokeOrientation.Vertical;
+		// verify that if release was unnatural
+		if (orientation == LastStrokeOrientation.Horizontal) {
+			// get natural direction (1 LH to RH, -1 otherwise)
+			int direction = lastCell.column - cellBeforeLast.column;
+			double naturalReleaseTreshold = mLockPatternView.getCenterXForColumn(lastCell.column) - direction
+					* MOVEMENT_AGAINST_GRAIN_THRESHOLD_IN_GNEXUS;
+			releaseIsAgainstFlow = (direction * x) < (direction * naturalReleaseTreshold); 
+
+		} else {
+			// get natural direction (1 TOP to BOTTOM, -1 otherwise)
+			int direction = lastCell.row - cellBeforeLast.row;
+			double naturalReleaseTreshold = mLockPatternView.getCenterYForRow(lastCell.row) - direction
+					* MOVEMENT_AGAINST_GRAIN_THRESHOLD_IN_GNEXUS;
+			releaseIsAgainstFlow = (direction * y) < (direction * naturalReleaseTreshold);
+		}
+
 		String detectedPattern = PatternUtils.convertDrawPattern(pattern);
-		if (detectedPattern.equals(getPattern()))
+		if (releaseIsAgainstFlow && detectedPattern.equals(getPattern()))
 			handleUnlockSucess();
 		else
 			handleUnlockFailure();
@@ -76,7 +110,6 @@ public class UnlockPatternActivity extends Activity {
 		mLockPatternView.clearPattern();
 		Toast.makeText(this, "Unlocked!", Toast.LENGTH_SHORT).show();
 		setResult(Activity.RESULT_OK);
-		finish();
 	}
 
 	protected void handleUnlockFailure() {
@@ -103,7 +136,7 @@ public class UnlockPatternActivity extends Activity {
 
 	protected String getPattern() {
 		// TODO: get persisted pattern
-		return "1234";
+		return "1236";
 	}
 
 }
