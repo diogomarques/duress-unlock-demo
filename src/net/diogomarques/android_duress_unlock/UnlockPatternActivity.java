@@ -4,11 +4,13 @@ import java.util.List;
 
 import net.diogomarques.com.android.internal.widget.LockPatternView;
 import net.diogomarques.com.android.internal.widget.LockPatternView.Cell;
+import net.diogomarques.com.android.internal.widget.LockPatternView.DisplayMode;
 import android.app.Activity;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.util.Log;
+import android.view.View;
 import android.view.WindowManager;
 import android.widget.TextView;
 
@@ -25,19 +27,24 @@ public class UnlockPatternActivity extends Activity {
 			.getSimpleName();
 	LockPatternView mLockPatternView;
 	TextView mTextViewBottom;
+	CountDownTimer showFailureTimer;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setFullWindowNoRotationAndLock();
 		setContentView(R.layout.activity_unlock_pattern);
-		mTextViewBottom = (TextView) findViewById(R.id.textViewBottom);
 		mLockPatternView = (LockPatternView) findViewById(R.id.lockPatternView);
 		mLockPatternView
 				.setOnPatternListener(new LockPatternView.OnPatternListener() {
 
 					@Override
 					public void onPatternStart() {
+						if (showFailureTimer != null) {
+							showFailureTimer.cancel();
+							mTextViewBottom.setText("");
+						}
+						
 					}
 
 					@Override
@@ -54,6 +61,15 @@ public class UnlockPatternActivity extends Activity {
 					public void onPatternCellAdded(List<Cell> pattern) {
 					}
 				});
+		mTextViewBottom = (TextView) findViewById(R.id.textViewBottom);
+		mTextViewBottom.setOnClickListener(new View.OnClickListener() {
+
+			@Override
+			public void onClick(View v) {
+				mLockPatternView.clearPattern();
+				mTextViewBottom.setText("");
+			}
+		});
 	}
 
 	public void setFullWindowNoRotationAndLock() {
@@ -123,7 +139,12 @@ public class UnlockPatternActivity extends Activity {
 	protected void handleUnlockSucess() {
 		mLockPatternView.clearPattern();
 		mTextViewBottom.setText("Unlocked!");
-		new CountDownTimer(2000, 2000) {
+	}
+
+	protected void handleUnlockFailure() {
+		mTextViewBottom.setText("Failed!");
+		mLockPatternView.setDisplayMode(DisplayMode.Wrong);
+		showFailureTimer = new CountDownTimer(2000, 2000) {
 
 			@Override
 			public void onTick(long millisUntilFinished) {
@@ -131,13 +152,9 @@ public class UnlockPatternActivity extends Activity {
 
 			@Override
 			public void onFinish() {
-				mTextViewBottom.setText("");
+				mLockPatternView.clearPattern();
 			}
 		}.start();
-	}
-
-	protected void handleUnlockFailure() {
-		mTextViewBottom.setText("Failed!");
 	}
 
 	protected String getPattern() {
