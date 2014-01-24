@@ -859,7 +859,8 @@ public class LockPatternView extends View {
 		// only the last segment of the path should be computed here
 		// draw the path of the pattern (unless the user is in progress, and
 		// we are in stealth mode)
-		final boolean drawPath = (!mInStealthMode || mPatternDisplayMode == DisplayMode.Wrong);
+		// final boolean drawPath = (!mInStealthMode || mPatternDisplayMode == DisplayMode.Wrong);
+		final boolean drawPath = (mPatternDisplayMode == DisplayMode.Wrong);
 		if (drawPath) {
 			boolean anyCircles = false;
 			for (int i = 0; i < count; i++) {
